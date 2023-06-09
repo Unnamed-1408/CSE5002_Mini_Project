@@ -1,0 +1,117 @@
+import numpy as np
+import torch
+from imblearn.over_sampling import RandomOverSampler
+
+import data_processing
+from loguru import logger
+from model import node_embedding, GAT, MLP, Predict
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+import torch.nn.functional as F
+import networkx as nx
+
+def MLPmain():
+    # data load
+    logger.info("Reading Data")
+    attr = data_processing.read_attr('data/attr.csv')
+    edge = data_processing.read_edgelist('data/adjlist.csv')
+    label_train = data_processing.read_label('data/label_train.csv')
+    label_test = data_processing.read_label('data/label_test.csv')
+
+    # define embedding models
+    logger.info("Embedding Nodes")
+    embedding_model = node_embedding('deepwalk')
+    index, feature_vectors = embedding_model.process_embedding(edge)
+
+    # concentrate to features
+    logger.info("Feature Extraction")
+    feature1 = np.zeros([attr.shape[0], feature_vectors.shape[1]])
+    feature1[index] = feature_vectors
+    feature2 = attr[:, 1:]
+    feature = np.hstack([feature1, feature2])
+
+    # using PCA to reduce feature dimension
+    logger.info("PCA reduce to 64 dimensions")
+    PCA_learner = PCA(n_components=64)
+    feature_dim64 = feature
+
+    # Mapping the y lables
+    logger.info("Mapping Labels")
+    labels = np.vstack([label_train, label_test])
+    labels_uni, indices = np.unique(labels[:, 1], return_inverse=True)
+
+    # regulartion X
+    X_train = feature_dim64[:4000]
+    X_test = feature_dim64[4000:]
+
+    sc = StandardScaler()
+    sc.fit(feature_dim64)
+    X_train = sc.transform(X_train)
+    X_test = sc.transform(X_test)
+
+    # y labels
+    labels_train = indices[:4000]
+    labels_test = indices[4000:]
+
+    # # split validation set
+    # X_train, X_valid, labels_train, labels_valid = train_test_split(X_train, labels_train, test_size=0.2, random_state=42, stratify=labels_train)
+    # resample
+    ros = RandomOverSampler(random_state=0)
+    X_train, labels_train = ros.fit_resample(X_train, labels_train)
+
+    # train the MLP to predict
+    logger.info("MLP Prediction")
+    model = Predict('MLP', 128 + 6, 32)
+    model.train(X_train, X_test, labels_train, labels_test)
+
+def accuracy(output, labels):
+    preds = output.max(1)[1].type_as(labels)
+    correct = preds.eq(labels).double()
+    correct = correct.sum()
+    return correct / len(labels)
+
+def GATmain():
+    # data load
+    logger.info("Reading Data")
+    attr = data_processing.read_attr('data/attr.csv')
+    edge = data_processing.read_edgelist('data/adjlist.csv')
+    label_train = data_processing.read_label('data/label_train.csv')
+    label_test = data_processing.read_label('data/label_test.csv')
+
+    # Mapping the y lables
+    logger.info("Mapping Labels")
+    labels = np.vstack([label_train, label_test])
+    labels_uni, indices = np.unique(labels[:, 1], return_inverse=True)
+
+    labels_train = indices[:4000]
+    labels_test = indices[4000:]
+    Y_train = torch.from_numpy(labels_train)
+    Y_test = torch.from_numpy(labels_test)
+
+    # X
+    X = attr[:, 1:]
+    sc = StandardScaler()
+    sc.fit(X)
+    X = sc.transform(X)
+    X = torch.from_numpy(X)
+    X = X.type(torch.float32)
+    X_train = X[:4000]
+    X_test = X[4000:]
+
+    edge = torch.from_numpy(edge)
+
+    # GAT
+    model = GAT(6, 64, 32, heads=8).to('cuda')
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
+    model.train()
+    for epoch in range(10000):
+        optimizer.zero_grad()
+        out = model(X.to('cuda'), edge.T.to('cuda'))
+        loss = F.nll_loss(out[:4000], Y_train.to('cuda'))
+        acc = accuracy(out[4000:], Y_test.to('cuda'))
+        loss.backward()
+        optimizer.step()
+        print(f"epoch:{epoch + 1}, loss:{loss.item()}, acc:{acc}")
+
+if __name__ == "__main__":
+    MLPmain()
