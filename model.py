@@ -13,7 +13,9 @@ from torch.nn import Linear
 import torch.nn.functional as F
 from torch_geometric.nn import GATConv
 import networkx as nx
-from sklearn.multiclass import OneVsRestClassifier
+from sklearn.multiclass import OneVsRestClassifier, OneVsOneClassifier
+from torch_geometric.utils import add_self_loops, degree
+from torch_geometric.nn import MessagePassing
 
 class node_embedding(object):
     def __init__(self, model_name):
@@ -56,7 +58,7 @@ class Predict(object):
         self.model = None
         self.model_name = model_name
         if model_name.upper() == 'MLP':
-            self.model = MLP(feature_dim, 128, classes, True)
+            self.model = MLP(feature_dim, 128, classes, False)
             self.model.cuda()
         if model_name.upper() == 'TOPKRANKER':
             self.model = OneVsRestClassifier(LogisticRegression())
@@ -87,13 +89,13 @@ class Predict(object):
         if self.model_name.upper() == 'TOPKRANKER':
             clf = SVC(C=1)
             clf = CalibratedClassifierCV(clf, method='sigmoid')
-            clf = OneVsRestClassifier(clf)
+            clf = OneVsOneClassifier(clf)
             clf.fit(X_train, Y_train)
 
             # Predict probabilities:
             y_pred = clf.predict(X_train)
             y_pred_test = clf.predict(X_test)
-            print('training acc = ' + str(np.sum(y_pred == Y_test)/Y_train.shape[0]) + ' testing acc = ' + str(np.sum(y_pred_test == Y_test)/Y_test.shape[0]))
+            print('training acc = ' + str(np.sum(y_pred == Y_train)/Y_train.shape[0]) + ' testing acc = ' + str(np.sum(y_pred_test == Y_test)/Y_test.shape[0]))
 
         if self.model_name.upper() == 'RANDOMFOREST':
             acc = cross_val_score(estimator=self.model, X=X_train, y=Y_train, cv=10)
@@ -163,3 +165,41 @@ class SelfAttention(nn.Module):
         attention = self.softmax(scores)
         weighted = torch.bmm(attention, values).squeeze(0)
         return weighted
+
+class GraphConvolution(MessagePassing):
+    def __init__(self, in_channels, out_channels,bias=True, **kwargs):
+        super(GraphConvolution, self).__init__(aggr='add', **kwargs)
+        self.lin = torch.nn.Linear(in_channels, out_channels,bias=bias)
+
+    def forward(self, x, edge_index):
+        edge_index, _ = add_self_loops(edge_index, num_nodes=x.size(0))
+        x = self.lin(x)
+        return self.propagate(edge_index, size=(x.size(0), x.size(0)), x=x)
+
+    def message(self, x_j, edge_index, size):
+        row, col = edge_index
+        deg = degree(row, size[0], dtype=x_j.dtype)
+        deg_inv_sqrt = deg.pow(-0.5)
+        norm = deg_inv_sqrt[row] * deg_inv_sqrt[col]
+        return norm.view(-1, 1) * x_j
+
+    def update(self, aggr_out):
+        return aggr_out
+
+
+class GCN(torch.nn.Module):
+    def __init__(self, nfeat, nhid, nclass, dropout):
+        super(GCN, self).__init__()
+        self.conv1 = GraphConvolution(nfeat, nhid)
+        self.conv2 = GraphConvolution(nhid, nclass)
+        self.dropout = dropout
+
+    def forward(self, features, edges):
+        x, edge_index = features, edges
+
+        x = self.conv1(x, edge_index)
+        x = F.relu(x)
+        x = F.dropout(x, self.dropout, training=self.training)
+        x = self.conv2(x, edge_index)
+
+        return F.log_softmax(x, dim=1)

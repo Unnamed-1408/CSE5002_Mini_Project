@@ -4,7 +4,7 @@ from imblearn.over_sampling import RandomOverSampler
 
 import data_processing
 from loguru import logger
-from model import node_embedding, GAT, MLP, Predict
+from model import node_embedding, GAT, MLP, Predict, GCN
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import torch.nn.functional as F
@@ -33,7 +33,7 @@ def MLPmain():
     # using PCA to reduce feature dimension
     logger.info("PCA reduce to 64 dimensions")
     PCA_learner = PCA(n_components=64)
-    feature_dim64 = feature
+    feature_dim64 = PCA_learner.fit_transform(feature)
 
     # Mapping the y lables
     logger.info("Mapping Labels")
@@ -61,7 +61,7 @@ def MLPmain():
 
     # train the MLP to predict
     logger.info("MLP Prediction")
-    model = Predict('MLP', 128 + 6, 32)
+    model = Predict('TOPKRANKER', 64, 32)
     model.train(X_train, X_test, labels_train, labels_test)
 
 def accuracy(output, labels):
@@ -100,8 +100,9 @@ def GATmain():
 
     edge = torch.from_numpy(edge)
 
-    # GAT
+    # GAT \ GCN
     model = GAT(6, 64, 32, heads=8).to('cuda')
+    # model = GCN(6, 128, 32, 0.1).to('cuda')
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
     model.train()
     for epoch in range(10000):
@@ -114,4 +115,4 @@ def GATmain():
         print(f"epoch:{epoch + 1}, loss:{loss.item()}, acc:{acc}")
 
 if __name__ == "__main__":
-    MLPmain()
+    GATmain()
