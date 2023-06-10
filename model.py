@@ -11,11 +11,12 @@ import numpy as np
 import torch
 from torch.nn import Linear
 import torch.nn.functional as F
-from torch_geometric.nn import GATConv
+from torch_geometric.nn import GATConv, global_add_pool
 import networkx as nx
 from sklearn.multiclass import OneVsRestClassifier, OneVsOneClassifier
 from torch_geometric.utils import add_self_loops, degree
 from torch_geometric.nn import MessagePassing
+from torch_geometric.nn.models import GIN,MLP
 
 class node_embedding(object):
     def __init__(self, model_name):
@@ -57,8 +58,8 @@ class Predict(object):
     def __init__(self, model_name, feature_dim, classes):
         self.model = None
         self.model_name = model_name
-        if model_name.upper() == 'MLP':
-            self.model = MLP(feature_dim, 128, classes, False)
+        if model_name.upper() == 'MLP_Model':
+            self.model = MLP_Model(feature_dim, 128, classes, False)
             self.model.cuda()
         if model_name.upper() == 'TOPKRANKER':
             self.model = OneVsRestClassifier(LogisticRegression())
@@ -66,7 +67,7 @@ class Predict(object):
             self.model = RandomForestClassifier(n_estimators=100)
 
     def train(self, X_train, X_test, Y_train, Y_test):
-        if self.model_name.upper() == 'MLP':
+        if self.model_name.upper() == 'MLP_Model':
             X_train = torch.from_numpy(X_train).to(torch.float32)
             X_test = torch.from_numpy(X_test).to(torch.float32)
             labels_train = torch.from_numpy(Y_train)
@@ -119,9 +120,9 @@ class GAT(nn.Module):
         features = self.gat2(features, edges)
         return F.log_softmax(features, dim=1)
 
-class MLP(torch.nn.Module):
+class MLP_Model(torch.nn.Module):
     def __init__(self, num_features, hidden_channels, num_classes, self_attention=False):
-        super(MLP, self).__init__()
+        super(MLP_Model, self).__init__()
         torch.manual_seed(12345)
         self.self_attention = self_attention
         if self_attention:
@@ -187,7 +188,7 @@ class GraphConvolution(MessagePassing):
         return aggr_out
 
 
-class GCN(torch.nn.Module):
+class GCN(nn.Module):
     def __init__(self, nfeat, nhid, nclass, dropout):
         super(GCN, self).__init__()
         self.conv1 = GraphConvolution(nfeat, nhid)
@@ -203,3 +204,20 @@ class GCN(torch.nn.Module):
         x = self.conv2(x, edge_index)
 
         return F.log_softmax(x, dim=1)
+
+class GIN_Model(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int,
+                 hidden_channels: int = 64, num_layers: int = 3,
+                 dropout: float = 0.5):
+        super(GIN_Model, self).__init__()
+        self.gnn = GIN(in_channels, hidden_channels, num_layers,
+                       dropout=dropout, jk='cat')
+
+        self.classifier = MLP([hidden_channels, hidden_channels, out_channels],
+                                    norm="batch_norm", dropout=dropout)
+
+    def forward(self, x, edge_index):
+        x = self.gnn(x, edge_index)
+        # x = global_add_pool(x, batch)
+        x = self.classifier(x)
+        return x

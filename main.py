@@ -4,7 +4,7 @@ from imblearn.over_sampling import RandomOverSampler
 
 import data_processing
 from loguru import logger
-from model import node_embedding, GAT, MLP, Predict, GCN
+from model import node_embedding, GAT, MLP_Model, Predict, GCN, GIN_Model
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import torch.nn.functional as F
@@ -59,8 +59,8 @@ def MLPmain():
     ros = RandomOverSampler(random_state=0)
     X_train, labels_train = ros.fit_resample(X_train, labels_train)
 
-    # train the MLP to predict
-    logger.info("MLP Prediction")
+    # train the MLP_Model to predict
+    logger.info("MLP_Model Prediction")
     model = Predict('TOPKRANKER', 64, 32)
     model.train(X_train, X_test, labels_train, labels_test)
 
@@ -70,7 +70,7 @@ def accuracy(output, labels):
     correct = correct.sum()
     return correct / len(labels)
 
-def GATmain():
+def GNNmain():
     # data load
     logger.info("Reading Data")
     attr = data_processing.read_attr('data/attr.csv')
@@ -97,22 +97,28 @@ def GATmain():
     X = X.type(torch.float32)
     X_train = X[:4000]
     X_test = X[4000:]
+    node_idx = np.arange(0, X.shape[0])
+    node_idx = torch.from_numpy(node_idx)
 
     edge = torch.from_numpy(edge)
 
-    # GAT \ GCN
-    model = GAT(6, 64, 32, heads=8).to('cuda')
-    # model = GCN(6, 128, 32, 0.1).to('cuda')
+    # GAT \ GCN + MLP
+    # model = GAT(6, 64, 32, heads=8).to('cuda')
+    model = GCN(6, 128, 32, 0.1).to('cuda')
+    # model = GIN_Model(6, 32, 64, 3, 0.2).to('cuda')
+
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
     model.train()
     for epoch in range(10000):
         optimizer.zero_grad()
         out = model(X.to('cuda'), edge.T.to('cuda'))
         loss = F.nll_loss(out[:4000], Y_train.to('cuda'))
-        acc = accuracy(out[4000:], Y_test.to('cuda'))
+        # loss = torch.nn.CrossEntropyLoss()(out[:4000], Y_train.to('cuda'))
+        acc_train = accuracy(out[:4000], Y_train.to('cuda'))
+        acc_test = accuracy(out[4000:], Y_test.to('cuda'))
         loss.backward()
         optimizer.step()
-        print(f"epoch:{epoch + 1}, loss:{loss.item()}, acc:{acc}")
+        print(f"epoch:{epoch + 1}, loss:{loss.item()}, train-acc:{acc_train}, test-acc:{acc_test}")
 
 if __name__ == "__main__":
-    GATmain()
+    GNNmain()
