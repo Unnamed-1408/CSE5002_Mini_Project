@@ -17,6 +17,7 @@ from sklearn.multiclass import OneVsRestClassifier, OneVsOneClassifier
 from torch_geometric.utils import add_self_loops, degree
 from torch_geometric.nn import MessagePassing
 from torch_geometric.nn.models import GIN,MLP
+from sklearn.metrics import f1_score
 
 class node_embedding(object):
     def __init__(self, model_name):
@@ -58,16 +59,16 @@ class Predict(object):
     def __init__(self, model_name, feature_dim, classes):
         self.model = None
         self.model_name = model_name
-        if model_name.upper() == 'MLP_Model':
-            self.model = MLP_Model(feature_dim, 128, classes, False)
+        if model_name.upper() == 'MLP':
+            self.model = MLP_Model(feature_dim, 128, classes, True)
             self.model.cuda()
         if model_name.upper() == 'TOPKRANKER':
-            self.model = OneVsRestClassifier(LogisticRegression())
+            self.model = None
         if model_name.upper() == 'RANDOMFOREST':
             self.model = RandomForestClassifier(n_estimators=100)
 
     def train(self, X_train, X_test, Y_train, Y_test):
-        if self.model_name.upper() == 'MLP_Model':
+        if self.model_name.upper() == 'MLP':
             X_train = torch.from_numpy(X_train).to(torch.float32)
             X_test = torch.from_numpy(X_test).to(torch.float32)
             labels_train = torch.from_numpy(Y_train)
@@ -75,6 +76,9 @@ class Predict(object):
 
             optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01, weight_decay=5e-4)
             self.model.train()
+            best_acc = -1
+            best_out = None
+            test_acc_best = -1
             for epoch in range(10000):
                 optimizer.zero_grad()
                 out = self.model(X_train.to('cuda'))
@@ -86,6 +90,14 @@ class Predict(object):
                 loss.backward()
                 optimizer.step()
                 print(f"epoch:{epoch + 1}, loss:{loss.item()}, acc_train:{acc_train}, acc_test:{acc_test}")
+                if acc_train > best_acc:
+                    test_acc_best = acc_test
+                    best_out = out_test.max(1)[1].type_as(labels_test).cpu().data
+            # F1-score
+            print(f'Best Acc : {test_acc_best}')
+            print('F1-Score macro: ', f1_score(labels_test, best_out, average='macro'))
+            print('F1-Score micro: ', f1_score(labels_test, best_out, average='micro'))
+            print('F1-Score weighted: ', f1_score(labels_test, best_out, average='weighted'))
 
         if self.model_name.upper() == 'TOPKRANKER':
             clf = SVC(C=1)
@@ -97,6 +109,9 @@ class Predict(object):
             y_pred = clf.predict(X_train)
             y_pred_test = clf.predict(X_test)
             print('training acc = ' + str(np.sum(y_pred == Y_train)/Y_train.shape[0]) + ' testing acc = ' + str(np.sum(y_pred_test == Y_test)/Y_test.shape[0]))
+            print('F1-Score macro: ', f1_score(Y_test, y_pred_test, average='macro'))
+            print('F1-Score micro: ', f1_score(Y_test, y_pred_test, average='micro'))
+            print('F1-Score weighted: ', f1_score(Y_test, y_pred_test, average='weighted'))
 
         if self.model_name.upper() == 'RANDOMFOREST':
             acc = cross_val_score(estimator=self.model, X=X_train, y=Y_train, cv=10)

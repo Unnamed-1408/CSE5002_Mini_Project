@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from imblearn.over_sampling import RandomOverSampler
+from sklearn.metrics import f1_score
 
 import data_processing
 from loguru import logger
@@ -56,12 +57,13 @@ def MLPmain():
     # # split validation set
     # X_train, X_valid, labels_train, labels_valid = train_test_split(X_train, labels_train, test_size=0.2, random_state=42, stratify=labels_train)
     # resample
+    logger.info("Resampling")
     ros = RandomOverSampler(random_state=0)
     X_train, labels_train = ros.fit_resample(X_train, labels_train)
 
     # train the MLP_Model to predict
     logger.info("MLP_Model Prediction")
-    model = Predict('TOPKRANKER', 64, 32)
+    model = Predict('mlp', 64, 32)
     model.train(X_train, X_test, labels_train, labels_test)
 
 def accuracy(output, labels):
@@ -107,8 +109,12 @@ def GNNmain():
     model = GCN(6, 128, 32, 0.1).to('cuda')
     # model = GIN_Model(6, 32, 64, 3, 0.2).to('cuda')
 
+    logger.info("Model Training")
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
     model.train()
+    best_acc = -1
+    best_out = None
+    test_acc_best = -1
     for epoch in range(10000):
         optimizer.zero_grad()
         out = model(X.to('cuda'), edge.T.to('cuda'))
@@ -119,6 +125,14 @@ def GNNmain():
         loss.backward()
         optimizer.step()
         print(f"epoch:{epoch + 1}, loss:{loss.item()}, train-acc:{acc_train}, test-acc:{acc_test}")
+        if acc_train > best_acc:
+            test_acc_best = acc_test
+            best_out = out[4000:].max(1)[1].type_as(labels_test).cpu().data
+    # F1-score
+    print(f'Best Acc : {test_acc_best}')
+    print('F1-Score macro: ', f1_score(labels_test, best_out, average='macro'))
+    print('F1-Score micro: ', f1_score(labels_test, best_out, average='micro'))
+    print('F1-Score weighted: ', f1_score(labels_test, best_out, average='weighted'))
 
 if __name__ == "__main__":
-    GNNmain()
+    MLPmain()

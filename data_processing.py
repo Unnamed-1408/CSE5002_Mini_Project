@@ -1,7 +1,17 @@
 import numpy as np
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.impute import SimpleImputer
 
 def read_attr(path):
     data = np.loadtxt(path, delimiter=",")
+    sim = SimpleImputer(missing_values=0, strategy='mean')
+    sim.fit(data[:4000, 1:])
+    data[:, 1:] = sim.transform(data[:, 1:])
+    # one-hot encoding
+    # enc = OneHotEncoder(sparse_output=False)
+    # one_hot = enc.fit_transform(data[:, 2:5])
+    # data = np.hstack([data[:, 0:2], one_hot, data[:, 5:7]])
+    # one-hot encoding end
     return data
 
 def read_edgelist(path):
