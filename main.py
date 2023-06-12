@@ -21,7 +21,7 @@ def MLPmain():
 
     # define embedding models
     logger.info("Embedding Nodes")
-    embedding_model = node_embedding('deepwalk')
+    embedding_model = node_embedding('node2vec')
     index, feature_vectors = embedding_model.process_embedding(edge)
 
     # concentrate to features
@@ -31,10 +31,10 @@ def MLPmain():
     feature2 = attr[:, 1:]
     feature = np.hstack([feature1, feature2])
 
-    # using PCA to reduce feature dimension
+    # using PCA to reduce feature dimension, temperoray forbidden
     logger.info("PCA reduce to 64 dimensions")
     PCA_learner = PCA(n_components=64)
-    feature_dim64 = PCA_learner.fit_transform(feature)
+    feature_dim64 = feature
 
     # Mapping the y lables
     logger.info("Mapping Labels")
@@ -63,7 +63,7 @@ def MLPmain():
 
     # train the MLP_Model to predict
     logger.info("MLP_Model Prediction")
-    model = Predict('mlp', 64, 32)
+    model = Predict('TOPKRANKER', 6, 32)
     model.train(X_train, X_test, labels_train, labels_test)
 
 def accuracy(output, labels):
@@ -127,7 +127,7 @@ def GNNmain():
         print(f"epoch:{epoch + 1}, loss:{loss.item()}, train-acc:{acc_train}, test-acc:{acc_test}")
         if acc_train > best_acc:
             test_acc_best = acc_test
-            best_out = out[4000:].max(1)[1].type_as(labels_test).cpu().data
+            best_out = out[4000:].max(1)[1].type_as(Y_test).cpu().data
     # F1-score
     print(f'Best Acc : {test_acc_best}')
     print('F1-Score macro: ', f1_score(labels_test, best_out, average='macro'))

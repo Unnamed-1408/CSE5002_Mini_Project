@@ -60,7 +60,7 @@ class Predict(object):
         self.model = None
         self.model_name = model_name
         if model_name.upper() == 'MLP':
-            self.model = MLP_Model(feature_dim, 128, classes, True)
+            self.model = MLP_Model(feature_dim, 128, classes, False)
             self.model.cuda()
         if model_name.upper() == 'TOPKRANKER':
             self.model = None

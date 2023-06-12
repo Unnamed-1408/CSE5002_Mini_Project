@@ -183,10 +183,10 @@ Therefore, it can be expected that the performance of GAT and GraphSAGE is bette
 
 ### Final Model
 
-I choose the GraphSAGE, because
+I choose the **GraphSAGE**, because
 
-* In the comparison experiment, it has the best performance
-* Simple and effective
+* In the comparison experiment, it has the second best performance, only lower than Node2vec + OVO
+* Simple and effective, speed much faster than Node2vec + OVO
 * My roommate has already helped me to realize it, and it is very simple to start experimenting...
 
 ## Evaluate Metric
@@ -264,11 +264,9 @@ The final output of the 32-dimensional vector represents the likelihood of the 3
 
 MLP uses Cross Entropy Loss to train.
 
-### OneVsOne
+### OneVsOne(OVO)
 
-> PCA reduces to 128 dimensions.
-
-Each classifier is `SVC` , SVC classification is a nonlinear classifier that separates different classes of data by constructing a nonlinear decision boundary. And can use C, to prevent overfitting.
+Each classifier is `SVC` , SVC classification is a nonlinear classifier that separates different classes of data by constructing a nonlinear decision boundary. And can use `C` parameter, to prevent overfitting.
 
 Using `CalibratedClassifierCV `  to cross-validation the training process
 
@@ -328,77 +326,121 @@ Using exist code.
 
 ## Experiment Result
 
-> Due to the limitation of time, all the experiment is test only once, maybe random factors interfering.
+> Due to the limitation of time, all the experiment is test only once, maybe random factors interfering. (Guarantee that the error is within a certain range)
 
 ### Unsupervised Graph Embedding + Classifier
 
-Final Result shows in the table(**fill the absent values, Without one-hot encoding**):
+Final Result shows in the table(**fill the absent values, Without one-hot encoding, Without PCA**):
+
+|                     | DeepWalk + MLP      | DeepWalk + MLP + Self-attention | DeepWalk + OVO     | DeepWalk + RandomForest |
+| ------------------- | ------------------- | :-----------------------------: | ------------------ | ----------------------- |
+| Training Acc (Best) | 0.9980541225450267  |       0.9979183636528193        | 0.9937098379943886 | 0.9726236969698212      |
+| Testing Acc         | 0.7958397534668722  |       0.7719568567026195        | 0.8166409861325116 | 0.7334360554699538      |
+| F1-Score macro      | 0.36652479405515703 |        0.349767461882951        | 0.3683636207761497 | /                       |
+| F1-Score micro      | 0.7958397534668721  |       0.7719568567026194        | 0.8166409861325117 | /                       |
+| F1-Score weighted   | 0.7948680343657579  |       0.7683764252376482        | 0.8108238228750033 | /                       |
+
+|                     | Word2vec + MLP     | Word2vec + MLP + Self-attention | Word2vec + OVO         | Word2vec + RandomForest |
+| :-----------------: | ------------------ | :-----------------------------: | ---------------------- | ----------------------- |
+| Training Acc (Best) | 0.9690469725767038 |       0.9992759525748937        | 0.9936645850303195     | 0.9774654283484472      |
+|     Testing Acc     | 0.8066255778120185 |       0.47226502311248075       | **0.8451463790446841** | 0.7773497688751926      |
+|   F1-Score macro    | 0.3421681816754324 |       0.21645115198706744       | 0.38721768837829007    | /                       |
+|   F1-Score micro    | 0.8066255778120185 |       0.47226502311248075       | 0.845146379044684      | /                       |
+|  F1-Score weighted  | 0.8058452844859023 |       0.5625662668107738        | 0.8417633226943736     | /                       |
+
+**With PCA**(only test a few model):
 
 |                     | DeepWalk + MLP     | DeepWalk + MLP + Self-attention | DeepWalk + OVO      | DeepWalk + RandomForest |
 | ------------------- | ------------------ | :-----------------------------: | ------------------- | ----------------------- |
-| Training Acc (Best) | 0.9961987510181917 |                                 | 0.9913114308987239  | 0.9723975550452796      |
-| Testing Acc         | 0.7773497688751926 |                                 | 0.8020030816640986  | 0.7372881355932204      |
-| F1-Score macro      | 0.3354470491354979 |                                 | 0.35432221301417494 | /                       |
-| F1-Score micro      | 0.7773497688751926 |                                 | 0.8020030816640985  | /                       |
-| F1-Score weighted   | 0.7759898313239914 |                                 | 0.796546634589864   | /                       |
-
-|                     | Word2vec + MLP     | Word2vec + MLP + Self-attention | Word2vec + OVO      | Word2vec + RandomForest |
-| :-----------------: | ------------------ | :-----------------------------: | ------------------- | ----------------------- |
-| Training Acc (Best) | 0.9971038102995746 |                                 | 0.9918997194316228  | 0.9771034988498307      |
-|     Testing Acc     | 0.8020030816640986 |                                 | 0.8212634822804314  | 0.7604006163328197      |
-|   F1-Score macro    | 0.3593160438414843 |                                 | 0.36734714062907653 | /                       |
-|   F1-Score micro    | 0.8020030816640986 |                                 | 0.8212634822804314  | /                       |
-|  F1-Score weighted  | 0.7932764320078353 |                                 | 0.8182858815951268  | /                       |
+| Training Acc (Best) | 0.9961987510181917 |       0.9979183636528193        | 0.9913114308987239  | 0.9723975550452796      |
+| Testing Acc         | 0.7773497688751926 |       0.7318952234206472        | 0.8020030816640986  | 0.7372881355932204      |
+| F1-Score macro      | 0.3354470491354979 |       0.32459283449645937       | 0.35432221301417494 | /                       |
+| F1-Score micro      | 0.7773497688751926 |       0.7318952234206472        | 0.8020030816640985  | /                       |
+| F1-Score weighted   | 0.7759898313239914 |       0.7330884970859773        | 0.796546634589864   | /                       |
 
 **Without filling the absent values**(only test a few model):
 
-|                     | DeepWalk + MLP | DeepWalk + OVO | DeepWalk + RandomForest |
-| :-----------------: | :------------: | :------------: | :---------------------: |
-| Training Acc (Best) |                |                |                         |
-|     Testing Acc     |                |                |                         |
-|   F1-Score macro    |                |                |                         |
-|   F1-Score micro    |                |                |                         |
-|  F1-Score weighted  |                |                |                         |
+|                     |   DeepWalk + MLP    |   DeepWalk + OVO   | DeepWalk + RandomForest |
+| :-----------------: | :-----------------: | :----------------: | :---------------------: |
+| Training Acc (Best) | 0.9964250158385374  | 0.9941171146710109 |   0.9734835278959583    |
+|     Testing Acc     | 0.7827426810477658  | 0.8181818181818182 |   0.7295839753466872    |
+|   F1-Score macro    | 0.33643382340403954 | 0.3500109165059251 |            /            |
+|   F1-Score micro    | 0.7827426810477658  | 0.8181818181818182 |            /            |
+|  F1-Score weighted  | 0.7815303566710782  | 0.8120838047769431 |            /            |
 
 **With the one-hot encoding**(only test a few model):
 
-|                     | DeepWalk + MLP | DeepWalk + OVO | DeepWalk + RandomForest |
-| :-----------------: | :------------: | :------------: | :---------------------: |
-| Training Acc (Best) |                |                |                         |
-|     Testing Acc     |                |                |                         |
-|   F1-Score macro    |                |                |                         |
-|   F1-Score micro    |                |                |                         |
-|  F1-Score weighted  |                |                |                         |
+|                     |   DeepWalk + MLP   |   DeepWalk + OVO    | DeepWalk + RandomForest |
+| :-----------------: | :----------------: | :-----------------: | :---------------------: |
+| Training Acc (Best) | 0.9962440039822609 | 0.9933478142818355  |   0.9730762266253439    |
+|     Testing Acc     | 0.7673343605546996 | 0.7896764252696457  |   0.7380585516178737    |
+|   F1-Score macro    | 0.3451645347878547 | 0.32217034079367596 |            /            |
+|   F1-Score micro    | 0.7673343605546995 | 0.7896764252696455  |            /            |
+|  F1-Score weighted  | 0.7653331867218369 | 0.7826998698150947  |            /            |
 
-> Why need to use PCA to reduce the dimension?
+> Why PCA doesn't work well here?
 
 PCA **cannot** improve the accuracy if using the raw feature, which only has 6 features. The correlation matrix also shows that each feature is already conditional independent.
 
 ![image-20230611211757948](/home/bill/.config/Typora/typora-user-images/image-20230611211757948.png)
 
-However, the graph embedding will generate 128 dimensions feature. We cannot determinate whether the features are still independent, and uses the 128 dimensions data to fit the learner will cost more times. Instead of this, using PCA can accelerate the converge speed. (It may reduce some of accuracy).
+Directly use PCA will loss some features, decrease the accuracy. It's clear in the following graph, PCA and without PCA converge almost the same times, however, the loss of the model without PCA lower.
 
+![image-20230612150738917](/home/bill/.config/Typora/typora-user-images/image-20230612150738917.png)
 
+### Supervised Graph Embedding + Classifier
 
-### Unsupervised Graph Embedding + Classifier
-
-|                     | GIN + MLP |
-| :-----------------: | :-------: |
-| Training Acc (Best) |           |
-|     Testing Acc     |           |
-|   F1-Score macro    |           |
-|   F1-Score micro    |           |
-|  F1-Score weighted  |           |
+|                     |     GIN + MLP      |
+| :-----------------: | :----------------: |
+| Training Acc (Best) |        0.94        |
+|     Testing Acc     | 0.7326656394453005 |
+|   F1-Score macro    | 0.2675807840727791 |
+|   F1-Score micro    | 0.7326656394453005 |
+|  F1-Score weighted  | 0.7301604203236546 |
 
 ### GNN (Graphic Nuaral Network)
 
-|                     | GCN  | GAT  | GraphSAGE |
-| :-----------------: | :--: | :--: | :-------: |
-| Training Acc (Best) |      |      |    99%    |
-|     Testing Acc     |      |      |    83%    |
-|   F1-Score macro    |      |      |     /     |
-|   F1-Score micro    |      |      |     /     |
-|  F1-Score weighted  |      |      |     /     |
+|                     |        GCN         |        GAT         | GraphSAGE |
+| :-----------------: | :----------------: | :----------------: | :-------: |
+| Training Acc (Best) |      0.71475       |      0.83925       |   0.99    |
+|     Testing Acc     | 0.6856702619414484 | 0.7604006163328197 |   0.83    |
+|   F1-Score macro    | 0.2506670435538773 | 0.3445996457775545 |     /     |
+|   F1-Score micro    | 0.6856702619414484 | 0.7604006163328197 |     /     |
+|  F1-Score weighted  | 0.667507186945356  | 0.7542515091665348 |     /     |
 
-## Limitation and future work
+## Limitation and Future work
 
+**Limitation : **
+
+* GNN only test three classical networks, not test SOTA
+* Resampling will cause over-fitting, and cannot use validation set while training (resampling over the training set)
+* Labels in datasets should performance better after one-hot encoding, need to do specific optimization
+
+**Future work :** 
+
+* Testing more models
+* Using another ways to balance the datasets, for example, using cost-matrix.
+
+## Conclusion
+
+Using PCA, one-hot encoding, and padding missing values does not result in a performance gain. In graph embedding using unsupervised learning, the learners using Node2vec and OneVSOne classifiers perform the best, achieving 84.5% accuracy on the test set. Among graph embeddings with GNN and supervised learning, GraphSAGE performs the best, achieving 83% accuracy. Although not as accurate as unsupervised learning, it has a speed advantage. Training Node2vec and OneVSOne usually takes about 20 min, while GraphSAGE takes only about 5 min. 
+
+Therefore, using GraphSAGE is the best choice.
+
+## Ablation Study
+
+> Conduct experiments to discuss whether using both two sources of information is better than using a single source of information.
+
+Only used the node features, not using the topology data.
+
+Just not concatenate with the graph feature, directly pass the features into classifier.
+
+|                     |         MLP         |         OVO         |    RandomForest     |
+| :-----------------: | :-----------------: | :-----------------: | :-----------------: |
+| Training Acc (Best) | 0.8435605032129604  | 0.8093492623766857  | 0.9083668005628965  |
+|     Testing Acc     | 0.24807395993836673 | 0.26194144838212635 | 0.29044684129429893 |
+|   F1-Score macro    | 0.06441342142312516 | 0.0698234377839078  |          /          |
+|   F1-Score micro    | 0.24807395993836673 | 0.26194144838212635 |          /          |
+|  F1-Score weighted  | 0.25729241882084886 | 0.26743419838739074 |          /          |
+
+It's easy to see that although the accuracy in training set reach a high accuracy, it cannot work well in testing set. And all the model performance worse than that with the graph data.
