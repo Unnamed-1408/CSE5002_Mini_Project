@@ -2,14 +2,14 @@
 
 A hands-on course mini-project of CSE5002 Intelligent Data Analysis, SUSTech 2023. The project aims to have students evaluate some classification models using the given dataset. This repo mainly focused on Graph Embedding + MLP and GNN models, all the experiment details can be found in report fold.
 
-The model implementation uses [PyTorch](https://pytorch.org/) and [Pytorch_geometric](https://pyg.org/). You can find all the models in my [github repo ][https://github.com/Unnamed-1408/CSE5002_Mini_Project].
+The model implementation uses [PyTorch](https://pytorch.org/) and [Pytorch_geometric](https://pyg.org/). You can find all the models in my [github repo](https://github.com/Unnamed-1408/CSE5002_Mini_Project).
 
 ## Dependency
 
 The required python packages are listed below:
 
 * Pytorch with cuda support
-* [pytorch_geometric][https://github.com/pyg-team/pytorch_geometric]
+* [pytorch_geometric](https://github.com/pyg-team/pytorch_geometric)
 * numpy
 * scikit-learn
 * loguru
@@ -27,7 +27,7 @@ conda env create -f environment.yml
 * data
   * dataset : contains adjlist, attr, labels
 * models
-  * third-party models : adapt from [deepwalk][https://github.com/phanein/deepwalk]
+  * third-party models : adapt from [deepwalk](https://github.com/phanein/deepwalk)
   * third-party models (fom my roommate) : GraphSAGE
 * output
   * need to create manually
