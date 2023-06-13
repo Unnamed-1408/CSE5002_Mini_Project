@@ -16,7 +16,7 @@ The required python packages are listed below:
 * [imbalanced-learn](https://imbalanced-learn.org/)
 * [NetworkX](https://networkx.org/)
 
-Or you can directly reproduce the environment on my local machine by
+Or you can directly reproduce the environment on my PC by
 
 ```bash
 conda env create -f environment.yml
