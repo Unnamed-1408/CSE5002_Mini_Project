@@ -423,7 +423,7 @@ Directly use PCA will loss some features, decrease the accuracy. It's clear in t
 
 ## Conclusion
 
-Using PCA, one-hot encoding, and padding missing values does not result in a performance gain. In graph embedding using unsupervised learning, the learners using Node2vec and OneVSOne classifiers perform the best, achieving 84.5% accuracy on the test set. Among graph embeddings with GNN and supervised learning, GraphSAGE performs the best, achieving 83% accuracy. Although not as accurate as unsupervised learning, it has a speed advantage. Training Node2vec and OneVSOne usually takes about 20 min, while GraphSAGE takes only about 5 min. 
+Using PCA, one-hot encoding, and filling missing values does not result in a performance gain. In graph embedding using unsupervised learning (Node2vec), the learners using OneVSOne classifiers perform the best, achieving 84.5% accuracy on the test set. Among graph embeddings with supervised learning and GNN, GraphSAGE performs the best, achieving 83% accuracy. Although not as accurate as unsupervised learning, it has a speed advantage. Training Node2vec and OneVSOne usually takes about 20 min, while GraphSAGE takes only about 5 min. 
 
 Therefore, using GraphSAGE is the best choice.
 
