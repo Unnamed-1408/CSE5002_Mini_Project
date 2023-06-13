@@ -218,7 +218,7 @@ $$
 
 All the experiments are based on *python* , mainly uses *pytorch*, *sklearn* and *pytorch-geometric*. The experiments are performed both on my personal computer with AMD Ryzen 5 3600X (12) @ 3.800GHz and NVIDIA GeForce RTX 2060 SUPER, and a server with Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz and 6 TITAN V.
 
-All the requirement libraries are in README.md in code folds, you can also check the requirement on [github repo][https://github.com/Unnamed-1408/CSE5002_Mini_Project.git].
+All the requirement libraries are in README.md in code folds, you can also check the requirement on [github repo](https://github.com/Unnamed-1408/CSE5002_Mini_Project.git).
 
 ### DeepWalk
 
