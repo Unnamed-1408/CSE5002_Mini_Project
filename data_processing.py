@@ -1,6 +1,7 @@
 import numpy as np
-from sklearn.preprocessing import OneHotEncoder
 from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
+
 
 def read_attr(path):
     data = np.loadtxt(path, delimiter=",")
@@ -13,6 +14,7 @@ def read_attr(path):
     # data = np.hstack([data[:, 0:2], one_hot, data[:, 5:7]])
     # one-hot encoding end
     return data
+
 
 def read_edgelist(path):
     f = open(path, "r")
@@ -35,6 +37,7 @@ def read_edgelist(path):
 
     return np.unique(np.asarray(adj_), axis=0)
 
+
 def read_adj(path):
     f = open(path, "r")
     # This assumes your spacing is arbitrary
@@ -49,6 +52,7 @@ def read_adj(path):
             adj[i, int(j)] = 1
             adj[int(j), i] = 1
     return adj
+
 
 def read_label(path):
     data = np.loadtxt(path, delimiter=",")

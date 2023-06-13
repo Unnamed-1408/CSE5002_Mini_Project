@@ -1,7 +1,6 @@
 from node2vec import Node2Vec
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.model_selection import cross_val_score
 from sklearn.svm import SVC
 from torch import nn
@@ -13,11 +12,12 @@ from torch.nn import Linear
 import torch.nn.functional as F
 from torch_geometric.nn import GATConv, global_add_pool
 import networkx as nx
-from sklearn.multiclass import OneVsRestClassifier, OneVsOneClassifier
+from sklearn.multiclass import OneVsOneClassifier
 from torch_geometric.utils import add_self_loops, degree
 from torch_geometric.nn import MessagePassing
-from torch_geometric.nn.models import GIN,MLP
+from torch_geometric.nn.models import GIN, MLP
 from sklearn.metrics import f1_score
+
 
 class node_embedding(object):
     def __init__(self, model_name):
@@ -54,6 +54,7 @@ class node_embedding(object):
             index_to_key = np.sort(index_to_key)
 
             return index_to_key, feature
+
 
 class Predict(object):
     def __init__(self, model_name, feature_dim, classes):
@@ -99,7 +100,7 @@ class Predict(object):
             print('F1-Score micro: ', f1_score(labels_test, best_out, average='micro'))
             print('F1-Score weighted: ', f1_score(labels_test, best_out, average='weighted'))
 
-        if self.model_name.upper() == 'TOPKRANKER':
+        if self.model_name.upper() == 'ONEVSONE':
             clf = SVC(C=1)
             clf = CalibratedClassifierCV(clf, method='sigmoid')
             clf = OneVsOneClassifier(clf)
@@ -108,7 +109,8 @@ class Predict(object):
             # Predict probabilities:
             y_pred = clf.predict(X_train)
             y_pred_test = clf.predict(X_test)
-            print('training acc = ' + str(np.sum(y_pred == Y_train)/Y_train.shape[0]) + ' testing acc = ' + str(np.sum(y_pred_test == Y_test)/Y_test.shape[0]))
+            print('training acc = ' + str(np.sum(y_pred == Y_train) / Y_train.shape[0]) + ' testing acc = ' + str(
+                np.sum(y_pred_test == Y_test) / Y_test.shape[0]))
             print('F1-Score macro: ', f1_score(Y_test, y_pred_test, average='macro'))
             print('F1-Score micro: ', f1_score(Y_test, y_pred_test, average='micro'))
             print('F1-Score weighted: ', f1_score(Y_test, y_pred_test, average='weighted'))
@@ -123,17 +125,20 @@ class Predict(object):
 
         return self.model
 
+
 class GAT(nn.Module):
     def __init__(self, feature, hidden, classes, heads=1):
-        super(GAT,self).__init__()
+        super(GAT, self).__init__()
         self.gat1 = GATConv(feature, hidden, heads=heads)
-        self.gat2 = GATConv(hidden*heads, classes)
+        self.gat2 = GATConv(hidden * heads, classes)
+
     def forward(self, features, edges):
-        features = self.gat1(features, edges)       # edges 这里输入是(1,2),表示1和2有边相连。
+        features = self.gat1(features, edges)  # edges 这里输入是(1,2),表示1和2有边相连。
         features = F.relu(features)
         features = F.dropout(features, training=self.training)
         features = self.gat2(features, edges)
         return F.log_softmax(features, dim=1)
+
 
 class MLP_Model(torch.nn.Module):
     def __init__(self, num_features, hidden_channels, num_classes, self_attention=False):
@@ -143,8 +148,9 @@ class MLP_Model(torch.nn.Module):
         if self_attention:
             self.attention_layers = SelfAttention(num_features)
         self.lin1 = Linear(num_features, hidden_channels)
-        self.lin2 = Linear(hidden_channels, hidden_channels//2)
-        self.lin3 = Linear(hidden_channels//2, num_classes)
+        self.lin2 = Linear(hidden_channels, hidden_channels // 2)
+        self.lin3 = Linear(hidden_channels // 2, num_classes)
+
     def forward(self, x):
         if self.self_attention:
             w = self.attention_layers(x)
@@ -157,11 +163,13 @@ class MLP_Model(torch.nn.Module):
         x = self.lin3(x)
         return x
 
+
 def accuracy(output, labels):
     preds = output.max(1)[1].type_as(labels)
     correct = preds.eq(labels).double()
     correct = correct.sum()
     return correct / len(labels)
+
 
 class SelfAttention(nn.Module):
     def __init__(self, input_dim):
@@ -182,10 +190,11 @@ class SelfAttention(nn.Module):
         weighted = torch.bmm(attention, values).squeeze(0)
         return weighted
 
+
 class GraphConvolution(MessagePassing):
-    def __init__(self, in_channels, out_channels,bias=True, **kwargs):
+    def __init__(self, in_channels, out_channels, bias=True, **kwargs):
         super(GraphConvolution, self).__init__(aggr='add', **kwargs)
-        self.lin = torch.nn.Linear(in_channels, out_channels,bias=bias)
+        self.lin = torch.nn.Linear(in_channels, out_channels, bias=bias)
 
     def forward(self, x, edge_index):
         edge_index, _ = add_self_loops(edge_index, num_nodes=x.size(0))
@@ -220,6 +229,7 @@ class GCN(nn.Module):
 
         return F.log_softmax(x, dim=1)
 
+
 class GIN_Model(nn.Module):
     def __init__(self, in_channels: int, out_channels: int,
                  hidden_channels: int = 64, num_layers: int = 3,
@@ -229,7 +239,7 @@ class GIN_Model(nn.Module):
                        dropout=dropout, jk='cat')
 
         self.classifier = MLP([hidden_channels, hidden_channels, out_channels],
-                                    norm="batch_norm", dropout=dropout)
+                              norm="batch_norm", dropout=dropout)
 
     def forward(self, x, edge_index):
         x = self.gnn(x, edge_index)

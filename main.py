@@ -1,17 +1,17 @@
-import numpy as np
 import torch
-from imblearn.over_sampling import RandomOverSampler
+import argparse
+import numpy as np
+from loguru import logger
+import torch.nn.functional as F
 from sklearn.metrics import f1_score
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+from imblearn.over_sampling import RandomOverSampler
 
 import data_processing
-from loguru import logger
 from model import node_embedding, GAT, MLP_Model, Predict, GCN, GIN_Model
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-import torch.nn.functional as F
-import networkx as nx
 
-def MLPmain():
+def MLPmain(model_name, embedding_name):
     # data load
     logger.info("Reading Data")
     attr = data_processing.read_attr('data/attr.csv')
@@ -21,7 +21,7 @@ def MLPmain():
 
     # define embedding models
     logger.info("Embedding Nodes")
-    embedding_model = node_embedding('node2vec')
+    embedding_model = node_embedding(embedding_name)
     index, feature_vectors = embedding_model.process_embedding(edge)
 
     # concentrate to features
@@ -63,8 +63,9 @@ def MLPmain():
 
     # train the MLP_Model to predict
     logger.info("MLP_Model Prediction")
-    model = Predict('TOPKRANKER', 6, 32)
+    model = Predict(model_name, 128 + 6, 32)
     model.train(X_train, X_test, labels_train, labels_test)
+
 
 def accuracy(output, labels):
     preds = output.max(1)[1].type_as(labels)
@@ -72,7 +73,8 @@ def accuracy(output, labels):
     correct = correct.sum()
     return correct / len(labels)
 
-def GNNmain():
+
+def GNNmain(model_name):
     # data load
     logger.info("Reading Data")
     attr = data_processing.read_attr('data/attr.csv')
@@ -105,9 +107,14 @@ def GNNmain():
     edge = torch.from_numpy(edge)
 
     # GAT \ GCN + MLP
-    # model = GAT(6, 64, 32, heads=8).to('cuda')
-    model = GCN(6, 128, 32, 0.1).to('cuda')
-    # model = GIN_Model(6, 32, 64, 3, 0.2).to('cuda')
+    if model_name == 'gat':
+        model = GAT(6, 64, 32, heads=8).to('cuda')
+    elif model_name == 'gcn':
+        model = GCN(6, 128, 32, 0.1).to('cuda')
+    elif model_name == 'gin':
+        model = GIN_Model(6, 32, 64, 3, 0.2).to('cuda')
+    else:
+        model = GAT(6, 64, 32, heads=8).to('cuda')
 
     logger.info("Model Training")
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
@@ -134,5 +141,21 @@ def GNNmain():
     print('F1-Score micro: ', f1_score(labels_test, best_out, average='micro'))
     print('F1-Score weighted: ', f1_score(labels_test, best_out, average='weighted'))
 
+
 if __name__ == "__main__":
-    MLPmain()
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-m', '--model_name', type=str, default='onevsone', help='Running Model Name, default = onevsone')
+    parser.add_argument('-e', '--embedding', type=str, default='node2vec', help='define the unsupervised graph embedding method, default = node2vec')
+    args = parser.parse_args()
+
+    model_unsupervised = ['mlp', 'onevsone', 'randomforest']
+    model_supervised = ['gin', 'gcn', 'gat']
+    embedding_methods = ['deepwalk', 'node2vec']
+
+    if args.model_name in model_unsupervised and args.embedding in embedding_methods:
+        MLPmain(args.model_name, args.embedding)
+    elif args.model_name in model_supervised:
+        GNNmain(args.model_name)
+    else:
+        logger.error('No valid models, check input parameters')
